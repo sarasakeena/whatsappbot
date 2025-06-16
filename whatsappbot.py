@@ -2,23 +2,16 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 from twilio.rest import Client
-from dotenv import load_dotenv
-import os
 from datetime import datetime
 import pandas as pd
 import json
 import base64
 
-# --- ENV SETUP ---
-load_dotenv()
-TWILIO_SID = os.getenv("TWILIO_SID")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_WHATSAPP_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER")
-GOOGLE_CREDS = os.getenv("GOOGLE_CREDS")
-
-if not GOOGLE_CREDS:
-    st.error("❌ GOOGLE_CREDS environment variable not set.")
-    st.stop()
+# --- ENV SETUP (from st.secrets) ---
+TWILIO_SID = st.secrets["TWILIO_SID"]
+TWILIO_AUTH_TOKEN = st.secrets["TWILIO_AUTH_TOKEN"]
+TWILIO_WHATSAPP_NUMBER = st.secrets["TWILIO_WHATSAPP_NUMBER"]
+GOOGLE_CREDS = st.secrets["GOOGLE_CREDS"]
 
 # --- TWILIO SETUP ---
 client_twilio = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
@@ -26,7 +19,7 @@ client_twilio = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
 # --- GOOGLE SHEETS SETUP ---
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 try:
-    json_creds = json.loads(base64.b64decode(os.getenv(GOOGLE_CREDS)))
+    json_creds = json.loads(base64.b64decode(GOOGLE_CREDS))
     creds = Credentials.from_service_account_info(json_creds, scopes=scope)
     client_sheets = gspread.authorize(creds)
     sheet = client_sheets.open("WhatsAppReminders").sheet1
@@ -38,7 +31,7 @@ except Exception as e:
 st.set_page_config(page_title="WhatsApp Scheduler", page_icon="💬")
 st.title("💬 WhatsApp Message Scheduler (Abzuna)")
 
-# Message scheduler input
+# --- SCHEDULE FORM ---
 with st.form("schedule_form"):
     st.markdown("### ✍️ Schedule New Message")
     name = st.text_input("Name")
