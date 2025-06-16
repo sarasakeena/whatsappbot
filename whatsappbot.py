@@ -8,7 +8,7 @@ import json
 import base64
 import os
 
-# --- ENV SETUP (from st.secrets) ---
+# --- ENV SETUP ---
 TWILIO_SID = os.environ["TWILIO_SID"]
 TWILIO_AUTH_TOKEN = os.environ["TWILIO_AUTH_TOKEN"]
 TWILIO_WHATSAPP_NUMBER = os.environ["TWILIO_WHATSAPP_NUMBER"]
@@ -28,11 +28,20 @@ except Exception as e:
     st.error(f"❌ Failed to authorize Google Sheets: {e}")
     st.stop()
 
-# --- STREAMLIT UI ---
+# --- UI CONFIG ---
 st.set_page_config(page_title="WhatsApp Scheduler", page_icon="💬")
 st.title("💬 WhatsApp Message Scheduler (Abzuna)")
 
-# --- SCHEDULE FORM ---
+st.markdown("""
+💬 **Usage Policy**
+- ✅ One-time **1-day free trial**
+- 💰 ₹68/month for full access
+- 📲 UPI: `your-upi-id@upi`
+
+🧾 After payment, we'll activate your subscription manually.
+""")
+
+# --- FORM ---
 with st.form("schedule_form"):
     st.markdown("### ✍️ Schedule New Message")
     name = st.text_input("Name")
@@ -40,20 +49,44 @@ with st.form("schedule_form"):
     message = st.text_area("Message")
     date = st.date_input("Date")
     time = st.time_input("Time")
-
     submit = st.form_submit_button("📤 Schedule")
 
     if submit:
         if name and phone and message:
             try:
-                sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M")])
-                st.success("✅ Message scheduled successfully!")
+                data = sheet.get_all_records()
+                user_found = False
+                for row in data:
+                    if str(row["Phone Number"]) == phone:
+                        user_found = True
+                        trial_used = row.get("Trial Used", "").lower() == "yes"
+                        subscribed = row.get("Subscribed", "").lower() == "yes"
+
+                        if subscribed:
+                            sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "Yes", row.get("Last Payment Date", "")])
+                            st.success("✅ Message scheduled successfully! (Subscribed User)")
+                        elif not trial_used:
+                            sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "No", ""])
+                            st.success("✅ Trial used! Your message is scheduled.")
+                        else:
+                            st.warning("""
+                            ⚠️ Trial already used and subscription not active.
+
+                            💰 Please pay ₹68/month to continue.
+                            📲 UPI: `sarasakeena@okaxis`
+                            """)
+                        break
+
+                if not user_found:
+                    # New user – allow trial
+                    sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "No", "No", ""])
+                    st.success("🎉 Welcome! Trial activated. Message scheduled.")
             except Exception as e:
                 st.error(f"❌ Failed to schedule message: {e}")
         else:
             st.warning("⚠️ All fields are required!")
 
-# --- SHOW EXISTING SCHEDULES ---
+# --- DISPLAY EXISTING MESSAGES ---
 st.markdown("### 📄 Scheduled Messages")
 try:
     data = sheet.get_all_records()
@@ -65,7 +98,7 @@ try:
 except Exception as e:
     st.error(f"❌ Failed to fetch scheduled messages: {e}")
 
-# --- SEND SCHEDULED MESSAGES ---
+# --- SENDING LOGIC ---
 st.markdown("### 🚀 Send Messages Now")
 if st.button("🧨 Check and Send Scheduled Messages"):
     try:
@@ -88,6 +121,6 @@ if st.button("🧨 Check and Send Scheduled Messages"):
                     st.error(f"❌ Failed to send to {row['Name']}: {e}")
 
         if sent_count == 0:
-            st.info("ℹ️ No messages scheduled for this exact time.")
+            st.info("ℹ️ No messages to send right now.")
     except Exception as e:
-        st.error(f"❌ Error while checking/sending messages: {e}")
+        st.error(f"❌ Error while sending messages: {e}")
