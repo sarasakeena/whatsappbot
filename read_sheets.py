@@ -1,15 +1,21 @@
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
+import streamlit as st
+import json
+import base64
 
-# Setup access
-scope = ["https://spreadsheets.google.com/feeds",'https://www.googleapis.com/auth/drive']
-creds = ServiceAccountCredentials.from_json_keyfile_name("credentials.json", scope)
+# Decode credentials from secrets
+GOOGLE_CREDS = json.loads(base64.b64decode(st.secrets["GOOGLE_CREDS"]))
+scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(GOOGLE_CREDS, scopes=scope)
 client = gspread.authorize(creds)
 
-# Open your Google Sheet
-sheet = client.open("WhatsAppReminders").sheet1  # change the sheet name
+# Open Google Sheet
+sheet = client.open_by_key(st.secrets["GOOGLE_SHEET_ID"]).sheet1
+
+# Get all records
 data = sheet.get_all_records()
 
-# Show the data
+# Display data
 for row in data:
     print(row["Name"], row["Phone Number"], row["Message"], row["Date"], row["Time"])

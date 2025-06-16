@@ -6,12 +6,13 @@ from datetime import datetime
 import pandas as pd
 import json
 import base64
+import os
 
 # --- ENV SETUP (from st.secrets) ---
-TWILIO_SID = st.secrets["TWILIO_SID"]
-TWILIO_AUTH_TOKEN = st.secrets["TWILIO_AUTH_TOKEN"]
-TWILIO_WHATSAPP_NUMBER = st.secrets["TWILIO_WHATSAPP_NUMBER"]
-GOOGLE_CREDS = st.secrets["GOOGLE_CREDS"]
+TWILIO_SID = os.environ["TWILIO_SID"]
+TWILIO_AUTH_TOKEN = os.environ["TWILIO_AUTH_TOKEN"]
+TWILIO_WHATSAPP_NUMBER = os.environ["TWILIO_WHATSAPP_NUMBER"]
+GOOGLE_CREDS = os.environ["GOOGLE_CREDS"]
 
 # --- TWILIO SETUP ---
 client_twilio = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
