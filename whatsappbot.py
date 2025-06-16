@@ -44,50 +44,131 @@ st.markdown("""
 # --- FORM ---
 with st.form("schedule_form"):
     st.markdown("### ✍️ Schedule New Message")
+
     name = st.text_input("Name")
     phone = st.text_input("Phone Number (e.g., 91XXXXXXXXXX)")
-    message = st.text_area("Message")
-    date = st.date_input("Date")
-    time = st.time_input("Time")
+    message = st.text_area("Message to Send")
+    
+    date_input = st.text_input("Date (YYYY-MM-DD)")
+    time_input = st.text_input("Time (HH:MM in 24-hour format)")
+    
+    payment_status = st.selectbox("Have you paid the ₹68 subscription?", ["No", "Yes (Just Now)"])
+
     submit = st.form_submit_button("📤 Schedule")
 
     if submit:
-      if name and phone and message:
-        try:
-            data = sheet.get_all_records()
-            user_found = False
-            for row in data:
-                if str(row["Phone Number"]) == phone:
-                    user_found = True
-                    trial_used = row.get("Trial Used", "").lower() == "yes"
-                    subscribed = row.get("Subscribed", "").lower() == "yes"
+        if name and phone and message and date_input and time_input:
+            try:
+                # Validate datetime input
+                try:
+                    schedule_dt = datetime.strptime(f"{date_input} {time_input}", "%Y-%m-%d %H:%M")
+                except ValueError:
+                    st.error("❌ Invalid date/time format. Use YYYY-MM-DD and HH:MM.")
+                    st.stop()
 
-                    if subscribed:
-                        sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "Yes", row.get("Last Payment Date", "")])
-                        st.success("✅ Message scheduled successfully! (Subscribed User)")
-                    elif not trial_used:
-                        sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "No", ""])
-                        st.success("✅ Trial used! Your message is scheduled.")
-                    else:
-                        st.warning("""  
-                            ❌ You’ve already used your 1-day free trial.  
+                now = datetime.now()
+                current_date = now.strftime("%Y-%m-%d")
+                current_time = now.strftime("%H:%M")
 
-                            💰 To continue using this service:  
+                data = sheet.get_all_records()
+                user_found = False
+                for row in data:
+                    if str(row["Phone Number"]) == phone:
+                        user_found = True
+                        trial_used = row.get("Trial Used", "").lower() == "yes"
+                        subscribed = row.get("Subscribed", "").lower() == "yes"
+
+                        # 🔁 Auto-subscribe if they selected payment done
+                        if payment_status == "Yes (Just Now)":
+                            subscribed = True
+                            subscribed_status = "Yes"
+                            last_payment_date = current_date
+                        else:
+                            subscribed_status = "Yes" if subscribed else "No"
+                            last_payment_date = row.get("Last Payment Date", "")
+
+                        # Check permission
+                        if subscribed or not trial_used:
+                            trial_status = "Yes"
+                            sheet.append_row([
+                                name, phone, message,
+                                date_input, time_input,
+                                trial_status, subscribed_status,
+                                last_payment_date
+                            ])
+
+                            st.success("✅ Message scheduled successfully!")
+
+                            # ✅ Immediately send the user's message
+                            if date_input == current_date and time_input == current_time:
+                                try:
+                                    client_twilio.messages.create(
+                                        body=message,
+                                        from_=TWILIO_WHATSAPP_NUMBER,
+                                        to=f"whatsapp:{phone}"
+                                    )
+                                    st.success("🚀 Message sent instantly!")
+                                except Exception as e:
+                                    st.error(f"❌ Failed to send instantly: {e}")
+
+                            # ✅ Send confirmation message to user
+                            try:
+                                confirmation = f"Hi {name}, your message has been scheduled for {date_input} at {time_input}. Thank you for using Abzuna 💬"
+                                client_twilio.messages.create(
+                                    body=confirmation,
+                                    from_=TWILIO_WHATSAPP_NUMBER,
+                                    to=f"whatsapp:{phone}"
+                                )
+                            except Exception as e:
+                                st.warning(f"⚠️ Could not send confirmation: {e}")
+
+                        else:
+                            st.warning("""
+                            ❌ You've already used your 1-day free trial.
+
+                            💰 To continue using this service:
                             - Pay ₹68/month  
-                            - UPI ID: `sarasakeena@okaxis`
+                            - UPI ID: `sarasakeena@okaxis`  
 
-                            ✅ Once paid, we’ll activate your subscription manually.
-                        """)
-                    break
+                            ✅ Once paid, resubmit and select "Yes (Just Now)".
+                            """)
+                        break
 
-            if not user_found:
-                # New user – allow 1-day free trial
-                sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "No", ""])
-                st.success("🎉 Welcome! Trial activated. Message scheduled.")
-        except Exception as e:
-            st.error(f"❌ Failed to schedule message: {e}")
-    else:
-        st.warning("⚠️ All fields are required!")
+                if not user_found:
+                    trial_status = "Yes"
+                    subscribed_status = "Yes" if payment_status == "Yes (Just Now)" else "No"
+                    last_payment_date = current_date if payment_status == "Yes (Just Now)" else ""
+
+                    sheet.append_row([name, phone, message, date_input, time_input, trial_status, subscribed_status, last_payment_date])
+                    st.success("🎉 Trial activated! Message scheduled.")
+
+                    # ✅ Immediately send the user's message if date/time match
+                    if date_input == current_date and time_input == current_time:
+                        try:
+                            client_twilio.messages.create(
+                                body=message,
+                                from_=TWILIO_WHATSAPP_NUMBER,
+                                to=f"whatsapp:{phone}"
+                            )
+                            st.success("🚀 Message sent instantly!")
+                        except Exception as e:
+                            st.error(f"❌ Failed to send instantly: {e}")
+
+                    # ✅ Send confirmation message to user
+                    try:
+                        confirmation = f"Hi {name}, your message has been scheduled for {date_input} at {time_input}. Thank you for using Abzuna 💬"
+                        client_twilio.messages.create(
+                            body=confirmation,
+                            from_=TWILIO_WHATSAPP_NUMBER,
+                            to=f"whatsapp:{phone}"
+                        )
+                    except Exception as e:
+                        st.warning(f"⚠️ Could not send confirmation: {e}")
+
+            except Exception as e:
+                st.error(f"❌ Failed to schedule message: {e}")
+        else:
+            st.warning("⚠️ All fields are required!")
 
 
 # --- DISPLAY EXISTING MESSAGES ---

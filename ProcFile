@@ -1,0 +1,2 @@
+web: streamlit run app.py
+worker: python background_schedular.py
