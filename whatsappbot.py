@@ -19,7 +19,7 @@ client_twilio = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
 # --- GOOGLE SHEETS SETUP ---
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 try:
-    json_creds = json.loads(base64.b64decode(GOOGLE_CREDS))
+    json_creds = json.loads(base64.b64decode(GOOGLE_CREDS).decode("utf-8"))
     creds = Credentials.from_service_account_info(json_creds, scopes=scope)
     client_sheets = gspread.authorize(creds)
     sheet = client_sheets.open("WhatsAppReminders").sheet1
