@@ -26,16 +26,6 @@ This project is a **WhatsApp Message Scheduler** built using:
 | GSpread   | Google Sheets integration    |
 | dotenv    | Secure credentials handling  |
 
-## 📂 Project Structure
-├── app.py # Main Streamlit app
-├── credentials.json # Google Sheets API credentials
-├── .env # Secret keys (not pushed)
-├── requirements.txt # Python dependencies
-├── README.md # Project description
-
-markdown
-Copy
-Edit
 
 ## 🔐 Setup Guide
 
