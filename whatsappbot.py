@@ -36,7 +36,7 @@ st.markdown("""
 💬 **Usage Policy**
 - ✅ One-time **1-day free trial**
 - 💰 ₹68/month for full access
-- 📲 UPI: `your-upi-id@upi`
+- 📲 UPI: `sarasakeena@okaxis`
 
 🧾 After payment, we'll activate your subscription manually.
 """)
@@ -52,39 +52,43 @@ with st.form("schedule_form"):
     submit = st.form_submit_button("📤 Schedule")
 
     if submit:
-        if name and phone and message:
-            try:
-                data = sheet.get_all_records()
-                user_found = False
-                for row in data:
-                    if str(row["Phone Number"]) == phone:
-                        user_found = True
-                        trial_used = row.get("Trial Used", "").lower() == "yes"
-                        subscribed = row.get("Subscribed", "").lower() == "yes"
+      if name and phone and message:
+        try:
+            data = sheet.get_all_records()
+            user_found = False
+            for row in data:
+                if str(row["Phone Number"]) == phone:
+                    user_found = True
+                    trial_used = row.get("Trial Used", "").lower() == "yes"
+                    subscribed = row.get("Subscribed", "").lower() == "yes"
 
-                        if subscribed:
-                            sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "Yes", row.get("Last Payment Date", "")])
-                            st.success("✅ Message scheduled successfully! (Subscribed User)")
-                        elif not trial_used:
-                            sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "No", ""])
-                            st.success("✅ Trial used! Your message is scheduled.")
-                        else:
-                            st.warning("""
-                            ⚠️ Trial already used and subscription not active.
+                    if subscribed:
+                        sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "Yes", row.get("Last Payment Date", "")])
+                        st.success("✅ Message scheduled successfully! (Subscribed User)")
+                    elif not trial_used:
+                        sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "No", ""])
+                        st.success("✅ Trial used! Your message is scheduled.")
+                    else:
+                        st.warning("""  
+                            ❌ You’ve already used your 1-day free trial.  
 
-                            💰 Please pay ₹68/month to continue.
-                            📲 UPI: `sarasakeena@okaxis`
-                            """)
-                        break
+                            💰 To continue using this service:  
+                            - Pay ₹68/month  
+                            - UPI ID: `sarasakeena@okaxis`
 
-                if not user_found:
-                    # New user – allow trial
-                    sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "No", "No", ""])
-                    st.success("🎉 Welcome! Trial activated. Message scheduled.")
-            except Exception as e:
-                st.error(f"❌ Failed to schedule message: {e}")
-        else:
-            st.warning("⚠️ All fields are required!")
+                            ✅ Once paid, we’ll activate your subscription manually.
+                        """)
+                    break
+
+            if not user_found:
+                # New user – allow 1-day free trial
+                sheet.append_row([name, phone, message, date.strftime("%Y-%m-%d"), time.strftime("%H:%M"), "Yes", "No", ""])
+                st.success("🎉 Welcome! Trial activated. Message scheduled.")
+        except Exception as e:
+            st.error(f"❌ Failed to schedule message: {e}")
+    else:
+        st.warning("⚠️ All fields are required!")
+
 
 # --- DISPLAY EXISTING MESSAGES ---
 st.markdown("### 📄 Scheduled Messages")
